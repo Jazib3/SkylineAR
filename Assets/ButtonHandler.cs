@@ -26,6 +26,7 @@ public class ButtonHandler : MonoBehaviour {
 		//Debug.Log(activeTracker.gameObject);
 		ModelModification mm = activeTracker.gameObject.GetComponent<ModelModification>();
 		int counter = mm.getCounter();
+		Debug.Log ("1 counter before change: " + counter);
 
 		// identify direction (left or right)
 		if (direction > 0) {
@@ -35,6 +36,7 @@ public class ButtonHandler : MonoBehaviour {
 			counter--;
 		}
 
+		Debug.Log ("2 counter after change: " + counter);
 		mm.setCounter(counter);
 	}
 
@@ -48,6 +50,7 @@ public class ButtonHandler : MonoBehaviour {
 
 		// set the new counter value to the currently tracked target
 		ModelModification mm = activeTracker.gameObject.GetComponent<ModelModification>();
+		Debug.Log ("changing counter from " + mm.getCounter () + " to " + newCount);
 		mm.setCounter(newCount);
 	}
 
