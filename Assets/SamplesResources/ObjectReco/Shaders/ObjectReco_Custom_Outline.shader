@@ -1,3 +1,5 @@
+// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
 /*==============================================================================
 Copyright (c) 2012-2014 Qualcomm Connected Experiences, Inc.
 All Rights Reserved.
@@ -53,7 +55,7 @@ Shader "Custom/Outline"
 			{
 				v2f output;
 				// unmodified projected position of the vertex
-				output.position = mul(UNITY_MATRIX_MVP, input.position);
+				output.position = UnityObjectToClipPos(input.position);
 				output.color = _SilhouetteColor;
 
 				// calculate silhouette in image space

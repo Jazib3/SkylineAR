@@ -1,18 +1,22 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
 using UnityEngine;
+using Vuforia;
 
 public class ModelModification : MonoBehaviour {
 
-	private GameObject dummyModels;
+	public GameObject dropdownGO;
+	public GameObject sliderGO;
 	private int counter;
 
 	// Use this for initialization
 	void Start () {
 		counter = 0;
-		dummyModels = GameObject.Find("Dummy Models");
 
-
+		if (dropdownGO == null) {
+			Debug.LogError("dropdown menu not set");
+		}
 	}
 	
 	// Update is called once per frame
@@ -20,46 +24,49 @@ public class ModelModification : MonoBehaviour {
 		
 	}
 
-	public void changeCounter(int direction) {
-		// identify direction (left or right)
-		if (direction > 0) {
-			counter++;
-		}
-		else if (direction < 0) {
-			counter--;
-		}
-
-		counter = sanitiseCounter(counter);
+	public void setCounter(int newCounter) {
+		counter = sanitiseCounter(newCounter);
+		updateDropdownMenu();
 		updateDisplayedModel();
 	}
 
-	public void changeCounterByInt(int newCount) {
-		counter = sanitiseCounter(newCount);
-		updateDisplayedModel();
+	public int getCounter() {
+		return counter;
+	}
+
+	public void updateDropdownMenu() {
+		Dropdown dd = dropdownGO.GetComponent<Dropdown>();
+		dd.value = counter;
+	}
+
+	public void updateSliderValue() {
+		Slider s = sliderGO.GetComponent<Slider>();
+		s.value = transform.localEulerAngles.y;
 	}
 
 	private void updateDisplayedModel() {
-		// remove all current models as a child of this gameobject
+		// only show the model that is the current counter
 		foreach(Transform child in transform) {
-			Destroy(child.gameObject);
-		}
+			bool active = false;
+			if (transform.GetChild(counter) == child) {
+				active = true;
+			}
 
-		// assign the correct model onto this gameobject
-		Transform model = dummyModels.transform.GetChild(counter);
-		Vector3 defaultPos = new Vector3(0, 0, 0);
-		Quaternion defaultRot = new Quaternion(0, 0, 0, 0);
-		Transform clone = Instantiate(model, transform, false);
-		clone.gameObject.SetActive(true);
+			child.gameObject.SetActive(active);
+		}
 	}
 
 	private int sanitiseCounter(int count) {
 		// sanitise for negative values
-		int childrenCount = dummyModels.transform.childCount;
-		if (count < 0) {
+		int childrenCount = transform.childCount;
+		Debug.Log("children count: " + childrenCount);
+ 		if (count < 0) {
+			Debug.Log("counter value went too zero: " + count);
 			count = 0;
 		}
 		// sanitise for positive values
 		else if (count >= childrenCount) {
+			Debug.Log("counter value went too beyond limit: " + count);
 			count = childrenCount - 1;
 		}
 

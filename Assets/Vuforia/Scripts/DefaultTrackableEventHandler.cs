@@ -67,7 +67,7 @@ namespace Vuforia
 
 
         private void OnTrackingFound()
-        {
+		{
             Renderer[] rendererComponents = GetComponentsInChildren<Renderer>(true);
             Collider[] colliderComponents = GetComponentsInChildren<Collider>(true);
 
@@ -82,6 +82,10 @@ namespace Vuforia
             {
                 component.enabled = true;
             }
+
+			// set value in dropdown to show the same as current model shown
+			ModelModification mm = gameObject.GetComponent<ModelModification>();
+			mm.updateDropdownMenu();
 
             Debug.Log("Trackable " + mTrackableBehaviour.TrackableName + " found");
         }

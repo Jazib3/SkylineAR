@@ -1,11 +1,10 @@
-/*===============================================================================
-Copyright (c) 2015-2016 PTC Inc. All Rights Reserved.
+/*============================================================================== 
+ Copyright (c) 2016 PTC Inc. All Rights Reserved.
  
-Vuforia is a trademark of PTC Inc., registered in the United States and other 
-countries.
-===============================================================================*/
+ Copyright (c) 2015 Qualcomm Connected Experiences, Inc. All Rights Reserved. 
+ * ==============================================================================*/
 using UnityEngine;
-using UnityEngine.UI;
+using ui = UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,25 +13,20 @@ using Vuforia;
 public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
 {
     #region PUBLIC_MEMBERS
-
     /// <summary>
     /// Can be set in the Unity inspector to reference a ImageTargetBehaviour that is instanciated for augmentations of new user defined targets.
     /// </summary>
     public ImageTargetBehaviour ImageTargetTemplate;
+	private ui.Image BuilderBtnImg;
 
     public int LastTargetIndex {
         get { return (mTargetCounter - 1) % MAX_TARGETS; }
     }
-
-    public bool TargetCreated { get; set; }
-
     #endregion PUBLIC_MEMBERS
 
 
-
     #region PRIVATE_MEMBERS
-
-    private const int MAX_TARGETS = 1;
+    private const int MAX_TARGETS = 5;
     private UserDefinedTargetBuildingBehaviour mTargetBuildingBehaviour;
     private ObjectTracker mObjectTracker;
     
@@ -45,45 +39,37 @@ public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
     // Counter used to name newly created targets
     private int mTargetCounter;
 
-    private GameObject udtFrameQualityIndicator;
-
+    private TrackableSettings mTrackableSettings;
     #endregion //PRIVATE_MEMBERS
 
 
     #region MONOBEHAVIOUR_METHODS
-
-    void Start()
+    public void Start()
     {
         mTargetBuildingBehaviour = GetComponent<UserDefinedTargetBuildingBehaviour>();
-        if (mTargetBuildingBehaviour) {
+        if (mTargetBuildingBehaviour)
+        {
             mTargetBuildingBehaviour.RegisterEventHandler(this);
             Debug.Log("Registering User Defined Target event handler.");
         }
 
-        TargetCreated = false;
-
-        if (!(udtFrameQualityIndicator = GameObject.Find("UDTFrameQualityIndicator"))) {
-            Debug.Log("<color=yellow>ALERT: The UDT qualityIndicator is null and can't be displayed.</color>");
-        }
+        mTrackableSettings = FindObjectOfType<TrackableSettings>();
+            
+		GameObject BuilderBtn = GameObject.Find("TargetBuilderUI/TargetBuilderCanvas/BuildPanel/BuildButton");
+		BuilderBtnImg = BuilderBtn.GetComponent<ui.Image>();
     }
-
-    void Update()
-    {
-        UpdateQualityIndicator();
-    }
-
     #endregion //MONOBEHAVIOUR_METHODS
 
 
     #region IUserDefinedTargetEventHandler implementation
-
     /// <summary>
     /// Called when UserDefinedTargetBuildingBehaviour has been initialized successfully
     /// </summary>
     public void OnInitialized()
     {
         mObjectTracker = TrackerManager.Instance.GetTracker<ObjectTracker>();
-        if (mObjectTracker != null) {
+        if (mObjectTracker != null)
+        {
             // Create a new dataset
             mBuiltDataSet = mObjectTracker.CreateDataSet();
             mObjectTracker.ActivateDataSet(mBuiltDataSet);
@@ -95,11 +81,26 @@ public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
     /// </summary>
     public void OnFrameQualityChanged(ImageTargetBuilder.FrameQuality frameQuality)
     {
+		Color red = new Color(0.65f, 0.23f, 0.23f, 1f);
+		Color green = new Color(0.28f, 0.63f, 0.19f, 1f);
+
         Debug.Log("Frame quality changed: " + frameQuality.ToString());
         mFrameQuality = frameQuality;
-        if (mFrameQuality == ImageTargetBuilder.FrameQuality.FRAME_QUALITY_LOW) {
-            Debug.Log("Low camera image quality");
-        }
+		GameObject BuilderBtn = BuilderBtnImg.gameObject;
+		GameObject BuilderBtnMsg = BuilderBtn.transform.Find("RawMessage").gameObject;
+		ui.Text BuilderBtnTxt = BuilderBtnMsg.GetComponent<ui.Text>();
+
+		if (mFrameQuality == ImageTargetBuilder.FrameQuality.FRAME_QUALITY_LOW) {
+			// set colour to red and show low quality message
+			BuilderBtnImg.color = red;
+			BuilderBtnMsg.SetActive(true);
+
+			Debug.Log ("Low camera image quality");
+		} else {
+			// set colour to green and hide the low quality message
+			BuilderBtnImg.color = green;
+			BuilderBtnMsg.SetActive(false);
+		}
     }
 
     /// <summary>
@@ -115,15 +116,18 @@ public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
 
         // Destroy the oldest target if the dataset is full or the dataset 
         // already contains five user-defined targets.
-        if (mBuiltDataSet.HasReachedTrackableLimit() || mBuiltDataSet.GetTrackables().Count() >= MAX_TARGETS) {
+        if (mBuiltDataSet.HasReachedTrackableLimit() || mBuiltDataSet.GetTrackables().Count() >= MAX_TARGETS)
+        {
             IEnumerable<Trackable> trackables = mBuiltDataSet.GetTrackables();
             Trackable oldest = null;
-            foreach (Trackable trackable in trackables) {
+            foreach (Trackable trackable in trackables)
+            {
                 if (oldest == null || trackable.ID < oldest.ID)
                     oldest = trackable;
             }
             
-            if (oldest != null) {
+            if (oldest != null)
+            {
                 Debug.Log("Destroying oldest trackable in UDT dataset: " + oldest.Name);
                 mBuiltDataSet.Destroy(oldest, true);
             }
@@ -147,62 +151,40 @@ public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
         mObjectTracker.ResetExtendedTracking();
         mObjectTracker.Start();
 
-        // Make sure Taregt build beehaviour keeps scanning...
+        // Make sure TargetBuildingBehaviour keeps scanning...
         mTargetBuildingBehaviour.StartScanning();
-
-        TargetCreated = true;
     }
-
-    #endregion //IUserDefinedTargetEventHandler implementation
+    #endregion IUserDefinedTargetEventHandler implementation
 
 
     #region PUBLIC_METHODS
-
     /// <summary>
     /// Instantiates a new user-defined target and is also responsible for dispatching callback to 
     /// IUserDefinedTargetEventHandler::OnNewTrackableSource
     /// </summary>
-    public void BuildNewTarget(float targetWidth)
+    public void BuildNewTarget()
     {
-        if (mFrameQuality == ImageTargetBuilder.FrameQuality.FRAME_QUALITY_MEDIUM ||
-            mFrameQuality == ImageTargetBuilder.FrameQuality.FRAME_QUALITY_HIGH) {
+        if (mFrameQuality == ImageTargetBuilder.FrameQuality.FRAME_QUALITY_MEDIUM || 
+            mFrameQuality == ImageTargetBuilder.FrameQuality.FRAME_QUALITY_HIGH)
+        {
             // create the name of the next target.
             // the TrackableName of the original, linked ImageTargetBehaviour is extended with a continuous number to ensure unique names
             string targetName = string.Format("{0}-{1}", ImageTargetTemplate.TrackableName, mTargetCounter);
 
-            Debug.Log("Building target with size: " + targetWidth);
-
-            TargetCreated = false;
-            mTargetBuildingBehaviour.BuildNewTarget(targetName, targetWidth);
-        } else {
+            // generate a new target:
+            mTargetBuildingBehaviour.BuildNewTarget(targetName, ImageTargetTemplate.GetSize().x);
+        }
+        else
+        {
+			
             Debug.Log("Cannot build new target, due to poor camera image quality");
-            TargetCreated = false;
+			// user pressed track button even though it is low quality - give a new message?
         }
     }
-
-    public bool IsFrameQualityHigh()
-    {
-        return (mFrameQuality == ImageTargetBuilder.FrameQuality.FRAME_QUALITY_HIGH);
-    }
-
-    public bool IsFrameQualityMedium()
-    {
-        return (mFrameQuality == ImageTargetBuilder.FrameQuality.FRAME_QUALITY_MEDIUM);
-    }
-
-    public void ShowQualityIndicator(bool isVisible)
-    {
-        if (udtFrameQualityIndicator != null) {
-            Renderer renderer = udtFrameQualityIndicator.GetComponent<Renderer>();
-            renderer.enabled = isVisible;
-        }
-    }
-
     #endregion //PUBLIC_METHODS
 
 
     #region PRIVATE_METHODS
-
     /// <summary>
     /// This method only demonstrates how to handle extended tracking feature when you have multiple targets in the scene
     /// So, this method could be removed otherwise
@@ -211,14 +193,17 @@ public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
     {
         // If Extended Tracking is enabled, we first disable it for all the trackables
         // and then enable it only for the newly created target
-        bool extTrackingEnabled = true;
-        if (extTrackingEnabled) {
+        bool extTrackingEnabled = mTrackableSettings && mTrackableSettings.IsExtendedTrackingEnabled();
+        if (extTrackingEnabled)
+        {
             StateManager stateManager = TrackerManager.Instance.GetStateManager();
 
             // 1. Stop extended tracking on all the trackables
-            foreach (var tb in stateManager.GetTrackableBehaviours()) {
+            foreach (var tb in stateManager.GetTrackableBehaviours())
+            {
                 var itb = tb as ImageTargetBehaviour;
-                if (itb != null) {
+                if (itb != null)
+                {
                     itb.ImageTarget.StopExtendedTracking();
                 }
             }
@@ -226,33 +211,14 @@ public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
             // 2. Start Extended Tracking on the most recently added target
             List<TrackableBehaviour> trackableList = stateManager.GetTrackableBehaviours().ToList();
             ImageTargetBehaviour lastItb = trackableList[LastTargetIndex] as ImageTargetBehaviour;
-            if (lastItb != null) {
+            if (lastItb != null)
+            {
                 if (lastItb.ImageTarget.StartExtendedTracking())
                     Debug.Log("Extended Tracking successfully enabled for " + lastItb.name);
             }
         }
     }
-
-    private void UpdateQualityIndicator()
-    {
-        if (udtFrameQualityIndicator != null) {
-
-            bool isMediumOrHighQuality = (IsFrameQualityMedium() || IsFrameQualityHigh()) ? true : false;
-
-            Renderer renderer = udtFrameQualityIndicator.GetComponent<Renderer>();
-
-            if (isMediumOrHighQuality) {
-                renderer.material.color = new Color(0.0f, 1.0f, 0.0f, 1.0f); // green
-            } else {
-                renderer.material.color = new Color(1.0f, 0.0f, 0.0f, 1.0f); // red
-            }
-
-            udtFrameQualityIndicator.transform.LookAt(Camera.main.transform);
-        }
-    }
-
     #endregion //PRIVATE_METHODS
-
 }
 
 
